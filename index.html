@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="vi">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Thí nghiệm khí lí tưởng</title>
+	<style>
+		:root {
+			--ink: #102f35;
+			--muted: #6a8586;
+			--paper: #f7f4eb;
+			--line: #d8e2d8;
+			--aqua: #b9ebe2;
+			--coral: #ef7c63;
+			--yellow: #ffd878;
+			--blue: #65b8c0;
+			--shadow: 0 24px 60px rgba(35, 75, 73, .12);
+		}
+
+		* { box-sizing: border-box; }
+		body {
+			margin: 0;
+			min-width: 320px;
+			color: var(--ink);
+			background: radial-gradient(circle at 12% 10%, #fffdf6 0 16%, transparent 42%),
+				linear-gradient(140deg, #f3f4df 0%, #f6e9d8 54%, #dfefeb 100%);
+			font-family: Georgia, 'Times New Roman', serif;
+		}
+
+		.page { max-width: 1180px; margin: 0 auto; padding: 28px 22px 36px; }
+		.topbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 24px; }
+		.brand { display: flex; align-items: center; gap: 12px; font-size: 18px; font-weight: bold; letter-spacing: .02em; }
+		.brand-mark { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: var(--coral); font-family: sans-serif; font-weight: 800; }
+		.eyebrow { margin: 0 0 8px; color: var(--coral); font-family: sans-serif; font-size: 11px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
+		h1 { max-width: 650px; margin: 0; font-size: clamp(34px, 5vw, 66px); line-height: .98; letter-spacing: -.045em; }
+		.intro { max-width: 570px; margin: 18px 0 0; color: var(--muted); font-family: sans-serif; font-size: 15px; line-height: 1.6; }
+		.reset { border: 1px solid var(--line); border-radius: 999px; padding: 11px 16px; color: var(--ink); background: rgba(255,255,255,.45); font-family: sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; }
+		.reset:hover { background: #fff; }
+
+		.workspace { display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 24px; align-items: start; margin-top: 34px; }
+		.experiment { position: relative; min-height: 590px; overflow: hidden; border: 1px solid rgba(112, 157, 151, .28); border-radius: 28px; padding: 30px; background: rgba(255,255,255,.44); box-shadow: var(--shadow); }
+		.experiment:before { content: ''; position: absolute; inset: 0; opacity: .35; pointer-events: none; background-image: linear-gradient(rgba(54, 115, 111, .07) 1px, transparent 1px), linear-gradient(90deg, rgba(54, 115, 111, .07) 1px, transparent 1px); background-size: 28px 28px; }
+		.label { position: relative; z-index: 2; display: inline-flex; gap: 8px; align-items: center; padding: 8px 11px; border-radius: 8px; background: var(--yellow); font-family: sans-serif; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+		.label:before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--coral); }
+		.lab-stage { position: relative; z-index: 1; height: 445px; margin: 26px auto 0; max-width: 700px; }
+		.tank { --piston-offset: 0px; position: absolute; left: 13%; right: 13%; top: 12px; bottom: 50px; border: 5px solid var(--ink); border-radius: 10px 10px 16px 16px; background: linear-gradient(160deg, rgba(205, 248, 239, .68), rgba(160, 216, 220, .3)); box-shadow: inset 0 0 0 5px rgba(255,255,255,.32); overflow: hidden; }
+		.tank:after { content: 'BÌNH KHÍ'; position: absolute; right: 16px; top: 16px; color: rgba(16,47,53,.42); font-family: sans-serif; font-size: 10px; font-weight: 800; letter-spacing: .12em; }
+		canvas { display: block; width: 100%; height: 100%; }
+		.piston-lid { position: absolute; left: 8px; right: 8px; top: var(--piston-offset); z-index: 4; height: 18px; border: 4px solid var(--ink); border-radius: 6px; background: var(--coral); cursor: grab; touch-action: none; transition: top .05s linear; }
+		.piston-lid:before { content: ''; position: absolute; left: 50%; top: -21px; width: 13px; height: 23px; border: 4px solid var(--ink); border-bottom: 0; border-radius: 10px 10px 0 0; transform: translateX(-50%); background: var(--yellow); }
+		.piston-lid:after { content: ''; position: absolute; left: 50%; top: 5px; width: 44%; height: 3px; transform: translateX(-50%); background: rgba(255,255,255,.65); }
+		.piston-lid:active { cursor: grabbing; }
+		.finger { position: absolute; left: 50%; top: -22px; z-index: 5; width: 27px; height: 62px; border: 4px solid var(--ink); border-radius: 16px 16px 9px 9px; transform: translateX(-50%); background: #f2b49a; pointer-events: none; transition: transform .14s ease; }
+		.finger:before { content: ''; position: absolute; left: -7px; bottom: 7px; width: 13px; height: 27px; border: 4px solid var(--ink); border-radius: 9px; background: #f2b49a; transform: rotate(-32deg); }
+		.finger.is-pressing { transform: translate(-50%, 22px); }
+		.pump { position: absolute; left: 2%; top: 110px; width: 18%; height: 170px; cursor: pointer; }
+		.pump:hover .pump-head { background: #f58d72; transform: translateY(-3px); }
+		.pump:active .pump-head { transform: translateY(3px) scaleY(.92); }
+		.pump-head { position: absolute; left: 0; top: 0; width: 62px; height: 40px; border: 4px solid var(--ink); border-radius: 9px; background: var(--coral); }
+		.pump-head:before, .pump-head:after { content: ''; position: absolute; top: 12px; width: 12px; height: 12px; border: 3px solid var(--ink); border-radius: 50%; background: var(--yellow); }
+		.pump-head:before { left: -10px; } .pump-head:after { right: -10px; }
+		.pump-tube { position: absolute; top: 36px; left: 23px; width: 16px; height: 134px; border: 4px solid var(--ink); border-top: 0; border-radius: 0 0 12px 12px; background: rgba(255,255,255,.4); }
+		.pump-tube:after { content: ''; position: absolute; right: -31px; bottom: -4px; width: 35px; height: 8px; background: var(--ink); }
+		.pump-text { position: absolute; top: 184px; left: -4px; white-space: nowrap; font-family: sans-serif; font-size: 11px; font-weight: 800; }
+		.roller { position: absolute; left: 50%; bottom: 0; width: 174px; height: 112px; transform: translateX(-50%); }
+		.roller-track { position: absolute; left: 12px; right: 12px; top: 51px; height: 15px; border: 3px solid var(--ink); border-radius: 999px; background: #dceae1; }
+		.roller-control { position: absolute; left: 50%; top: 0; width: 62px; height: 58px; padding: 0; border: 4px solid var(--ink); border-radius: 10px 10px 15px 15px; transform: translateX(-50%); background: var(--yellow); cursor: grab; box-shadow: 0 5px 0 var(--ink); touch-action: none; }
+		.roller-control:before { content: ''; position: absolute; left: 11px; right: 11px; top: -10px; height: 11px; border: 4px solid var(--ink); border-bottom: 0; border-radius: 12px 12px 0 0; }
+		.roller-control:after { content: '✦'; color: var(--coral); font-family: sans-serif; font-size: 24px; font-weight: 800; }
+		.roller-control:active { cursor: grabbing; }
+		.roller-title { position: absolute; top: 76px; width: 100%; text-align: center; font-family: sans-serif; font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+		.temperature-effect { position: absolute; left: 50%; bottom: 70px; z-index: 3; min-width: 92px; padding: 8px 10px; border: 2px solid var(--ink); border-radius: 9px; opacity: 0; transform: translate(-50%, 8px) scale(.9); transition: opacity .2s, transform .2s; pointer-events: none; font-family: sans-serif; font-size: 12px; font-weight: 800; text-align: center; }
+		.temperature-effect.visible { opacity: 1; transform: translate(-50%, 0) scale(1); }
+		.temperature-effect.fire { background: #ffb36c; }
+		.temperature-effect.ice { background: #b9eaf2; }
+		.direction { position: absolute; right: 0; top: 107px; display: grid; gap: 7px; color: var(--muted); font-family: sans-serif; font-size: 11px; text-align: left; }
+		.direction span { display: flex; align-items: center; gap: 7px; }
+		.direction i { font-style: normal; color: var(--coral); font-size: 19px; }
+
+		.panel { display: grid; gap: 14px; }
+		.card { border: 1px solid var(--line); border-radius: 18px; padding: 20px; background: rgba(255,255,255,.66); }
+		.card h2 { margin: 0 0 15px; font-size: 16px; }
+		.stat { display: flex; align-items: end; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); font-family: sans-serif; }
+		.stat:last-child { border-bottom: 0; padding-bottom: 0; }
+		.stat-label { color: var(--muted); font-size: 12px; }
+		.stat strong { font-size: 23px; }
+		.stat strong small { color: var(--muted); font-size: 11px; font-weight: 500; }
+		.meter { height: 8px; overflow: hidden; border-radius: 99px; background: #d8e7df; }
+		.meter > span { display: block; width: 28%; height: 100%; border-radius: inherit; background: var(--coral); transition: width .25s ease; }
+		.hint { margin: 0; color: var(--muted); font-family: sans-serif; font-size: 12px; line-height: 1.6; }
+		.pump-button { width: 100%; border: 0; border-radius: 10px; padding: 13px; color: #fff; background: var(--ink); font-family: sans-serif; font-size: 12px; font-weight: 800; cursor: pointer; }
+		.pump-button:hover { background: #1f555b; }
+		.legend { display: flex; gap: 12px; margin-top: 14px; color: var(--muted); font-family: sans-serif; font-size: 11px; }
+		.dot { width: 9px; height: 9px; margin-top: 2px; border-radius: 50%; background: var(--coral); } .dot.blue { background: var(--blue); }
+
+		@media (max-width: 780px) {
+			.page { padding: 20px 14px 28px; } .topbar { align-items: flex-start; } .reset { padding: 9px 11px; }
+			.workspace { grid-template-columns: 1fr; } .experiment { min-height: 560px; padding: 20px 14px; } .lab-stage { height: 430px; }
+			.tank { left: 14%; right: 8%; } .pump { left: 0; transform: scale(.82); transform-origin: left top; } .direction { right: 0; transform: scale(.85); transform-origin: right top; }
+			.panel { grid-template-columns: repeat(2, 1fr); } .card:last-child { grid-column: 1 / -1; }
+		}
+		@media (max-width: 480px) { h1 { font-size: 42px; } .panel { grid-template-columns: 1fr; } .card:last-child { grid-column: auto; } .tank { left: 13%; right: 3%; } .pump { left: -9px; } .direction { display: none; } }
+	</style>
+</head>
+<body>
+	<main class="page">
+		<header class="topbar">
+			<div class="brand"><span class="brand-mark">V</span><span>Phòng thí nghiệm vật lí</span></div>
+			<button class="reset" id="resetButton" type="button">Đặt lại thí nghiệm</button>
+		</header>
+		<section>
+			<p class="eyebrow">Mô phỏng 01 · Nhiệt học</p>
+			<h1>Thí nghiệm<br>khí lí tưởng</h1>
+			<p class="intro">Quan sát chuyển động của các phân tử trong một bình kín. Bơm thêm phân tử và điều chỉnh con lăn để thay đổi nhiệt độ của hệ.</p>
+		</section>
+
+		<div class="workspace">
+			<section class="experiment" aria-label="Mô phỏng bình khí lí tưởng">
+				<div class="lab-stage">
+					<div class="pump" id="pump" role="button" tabindex="0" aria-label="Click vào ống bơm để thêm phân tử">
+						<div class="pump-head"></div><div class="pump-tube"></div>
+					</div>
+					<div class="tank"><canvas id="gasCanvas" aria-label="Các phân tử khí đang chuyển động"></canvas><div class="piston-lid" id="piston" aria-label="Nắp piston điều chỉnh thể tích"><div class="finger"></div></div></div>
+					<div class="roller" aria-label="Xô điều chỉnh nhiệt độ">
+						<div class="roller-track"></div><button class="roller-control" id="roller" type="button" aria-label="Kéo xô lên hoặc xuống"></button>
+					</div>
+					<div class="temperature-effect" id="temperatureEffect" aria-live="polite"></div>
+				</div>
+			</section>
+
+			<aside class="panel">
+				<section class="card">
+					<h2>Thông số hiện tại</h2>
+					<div class="stat"><span class="stat-label">Nhiệt độ</span><strong id="temperature">300 <small>K</small></strong></div>
+					<div class="stat"><span class="stat-label">Phân tử</span><strong id="particleCount">24</strong></div>
+					<div class="stat"><span class="stat-label">Thể tích V</span><strong id="volume">100 <small>%</small></strong></div>
+					<div class="stat"><span class="stat-label">Áp suất tương đối</span><strong id="pressure">1.0 <small>atm</small></strong></div>
+				</section>
+				<section class="card">
+					<h2>Mức nhiệt</h2>
+					<div class="meter"><span id="temperatureMeter"></span></div>
+					<div class="legend"><span><i class="dot"></i>Nóng hơn</span><span><i class="dot blue"></i>Mát hơn</span></div>
+				</section>
+			</aside>
+		</div>
+	</main>
+
+	<script>
+		const canvas = document.getElementById('gasCanvas');
+		const context = canvas.getContext('2d');
+		const tank = canvas.parentElement;
+		const roller = document.getElementById('roller');
+		const temperatureText = document.getElementById('temperature');
+		const particleText = document.getElementById('particleCount');
+		const volumeText = document.getElementById('volume');
+		const pressureText = document.getElementById('pressure');
+		const temperatureMeter = document.getElementById('temperatureMeter');
+		const piston = document.getElementById('piston');
+		const finger = piston.querySelector('.finger');
+		let temperature = 300;
+		let particles = [];
+		let dragActive = false;
+		let dragStartY = 0;
+		let dragStartTemperature = 300;
+		let temperatureTrend = 0;
+		let pistonActive = false;
+		let pistonOffset = 0;
+
+		function volumeRatio() {
+			const maximumOffset = Math.max(1, canvas.clientHeight * .48);
+			return Math.max(.35, 1 - pistonOffset / maximumOffset);
+		}
+
+		function resizeCanvas() {
+			const scale = window.devicePixelRatio || 1;
+			canvas.width = tank.clientWidth * scale;
+			canvas.height = tank.clientHeight * scale;
+			context.setTransform(scale, 0, 0, scale, 0, 0);
+		}
+
+		function addParticle() {
+			const radius = 3 + Math.random() * 2;
+			const speed = .7 + Math.random() * 1.1;
+			const angle = Math.random() * Math.PI * 2;
+			const width = Math.max(canvas.clientWidth, radius * 2);
+			const height = Math.max(canvas.clientHeight, radius * 2);
+			const topBoundary = pistonOffset + radius;
+			const bottomBoundary = Math.max(topBoundary, height - radius);
+			particles.push({ x: radius + Math.random() * Math.max(1, width - radius * 2), y: topBoundary + Math.random() * Math.max(1, bottomBoundary - topBoundary), radius, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed });
+		}
+
+		function setTemperature(value) {
+			temperature = Math.max(180, Math.min(520, Math.round(value)));
+			temperatureText.innerHTML = temperature + ' <small>K</small>';
+			particleText.textContent = particles.length;
+			pressureText.innerHTML = (temperature / 300 * particles.length / 24 / volumeRatio()).toFixed(1) + ' <small>atm</small>';
+			temperatureMeter.style.width = ((temperature - 180) / 340 * 100) + '%';
+			roller.style.top = ((520 - temperature) / 340 * 43) + 'px';
+		}
+
+		function setPistonOffset(value) {
+			const maximumOffset = Math.max(0, canvas.clientHeight * .48);
+			pistonOffset = Math.max(0, Math.min(maximumOffset, value));
+			tank.style.setProperty('--piston-offset', pistonOffset + 'px');
+			volumeText.innerHTML = Math.round(volumeRatio() * 100) + ' <small>%</small>';
+			setTemperature(temperature);
+		}
+
+		function showTemperatureEffect() {
+			const effect = document.getElementById('temperatureEffect');
+			const isHot = temperatureTrend > 0;
+			const isCold = temperatureTrend < 0;
+			if (!isHot && !isCold) { effect.className = 'temperature-effect'; return; }
+			effect.textContent = isHot ? '🔥 Ấm lên' : '🧊 Lạnh đi';
+			effect.className = 'temperature-effect visible ' + (isHot ? 'fire' : 'ice');
+		}
+
+		function draw(timestamp) {
+			const width = canvas.clientWidth;
+			const height = canvas.clientHeight;
+			if (dragActive && temperatureTrend !== 0) { setTemperature(temperature + temperatureTrend * .16); showTemperatureEffect(); }
+			context.clearRect(0, 0, width, height);
+			const speedFactor = Math.sqrt(temperature / 300);
+			particles.forEach((particle) => {
+				particle.x += particle.vx * speedFactor;
+				particle.y += particle.vy * speedFactor;
+				if (particle.x < particle.radius || particle.x > width - particle.radius) { particle.vx *= -1; particle.x = Math.max(particle.radius, Math.min(width - particle.radius, particle.x)); }
+				const topBoundary = pistonOffset + particle.radius;
+				if (particle.y < topBoundary || particle.y > height - particle.radius) { particle.vy *= -1; particle.y = Math.max(topBoundary, Math.min(height - particle.radius, particle.y)); }
+				context.beginPath(); context.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2); context.fillStyle = '#ef7c63'; context.fill();
+			});
+			requestAnimationFrame(draw);
+		}
+
+		function seed() { particles = []; temperatureTrend = 0; setPistonOffset(0); for (let index = 0; index < 24; index += 1) addParticle(); setTemperature(300); showTemperatureEffect(); }
+		roller.addEventListener('pointerdown', (event) => { dragActive = true; dragStartY = event.clientY; dragStartTemperature = temperature; roller.setPointerCapture(event.pointerId); });
+		roller.addEventListener('pointermove', (event) => { if (dragActive) { const nextTemperature = dragStartTemperature + (dragStartY - event.clientY) * 4; temperatureTrend = Math.sign(nextTemperature - dragStartTemperature); setTemperature(nextTemperature); showTemperatureEffect(); } });
+		roller.addEventListener('pointerup', () => { dragActive = false; temperatureTrend = 0; showTemperatureEffect(); });
+		roller.addEventListener('pointercancel', () => { dragActive = false; temperatureTrend = 0; showTemperatureEffect(); });
+		piston.addEventListener('pointerdown', (event) => { pistonActive = true; piston.setPointerCapture(event.pointerId); piston.dataset.startY = event.clientY; piston.dataset.startOffset = pistonOffset; finger.classList.add('is-pressing'); });
+		piston.addEventListener('pointermove', (event) => { if (pistonActive) setPistonOffset(Number(piston.dataset.startOffset) + event.clientY - Number(piston.dataset.startY)); });
+		piston.addEventListener('pointerup', () => { pistonActive = false; finger.classList.remove('is-pressing'); });
+		piston.addEventListener('pointercancel', () => { pistonActive = false; finger.classList.remove('is-pressing'); });
+		function pumpParticles() { for (let index = 0; index < 4; index += 1) addParticle(); setTemperature(temperature); }
+		document.getElementById('pump').addEventListener('click', pumpParticles);
+		document.getElementById('pump').addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); pumpParticles(); } });
+		document.getElementById('resetButton').addEventListener('click', seed);
+		window.addEventListener('resize', resizeCanvas);
+		resizeCanvas(); seed(); draw(0);
+	</script>
+</body>
+</html>
