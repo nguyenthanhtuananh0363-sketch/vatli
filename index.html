@@ -50,6 +50,7 @@
 		.piston-lid:before { content: ''; position: absolute; left: 50%; top: -21px; width: 13px; height: 23px; border: 4px solid var(--ink); border-bottom: 0; border-radius: 10px 10px 0 0; transform: translateX(-50%); background: var(--yellow); }
 		.piston-lid:after { content: ''; position: absolute; left: 50%; top: 5px; width: 44%; height: 3px; transform: translateX(-50%); background: rgba(255,255,255,.65); }
 		.piston-lid:active { cursor: grabbing; }
+		.piston-lid.mode-locked { opacity: .38; cursor: not-allowed; pointer-events: none; }
 		.finger { position: absolute; left: 50%; top: -22px; z-index: 5; width: 27px; height: 62px; border: 4px solid var(--ink); border-radius: 16px 16px 9px 9px; transform: translateX(-50%); background: #f2b49a; pointer-events: none; transition: transform .14s ease; }
 		.finger:before { content: ''; position: absolute; left: -7px; bottom: 7px; width: 13px; height: 27px; border: 4px solid var(--ink); border-radius: 9px; background: #f2b49a; transform: rotate(-32deg); }
 		.finger.is-pressing { transform: translate(-50%, 22px); }
@@ -80,6 +81,9 @@
 		.panel { display: grid; gap: 14px; }
 		.card { border: 1px solid var(--line); border-radius: 18px; padding: 20px; background: rgba(255,255,255,.66); }
 		.card h2 { margin: 0 0 15px; font-size: 16px; }
+		.mode-switch { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; padding: 4px; border-radius: 10px; background: #e5eee7; }
+		.mode-button { border: 0; border-radius: 7px; padding: 9px 4px; color: var(--muted); background: transparent; font-family: sans-serif; font-size: 11px; font-weight: 800; cursor: pointer; }
+		.mode-button.active { color: #fff; background: var(--ink); }
 		.stat { display: flex; align-items: end; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); font-family: sans-serif; }
 		.stat:last-child { border-bottom: 0; padding-bottom: 0; }
 		.stat-label { color: var(--muted); font-size: 12px; }
@@ -130,6 +134,14 @@
 
 			<aside class="panel">
 				<section class="card">
+					<h2>Quá trình</h2>
+					<div class="mode-switch" role="group" aria-label="Chọn quá trình nhiệt động lực học">
+						<button class="mode-button active" data-mode="isochoric" type="button">Đẳng tích</button>
+						<button class="mode-button" data-mode="isobaric" type="button">Đẳng áp</button>
+						<button class="mode-button" data-mode="isothermal" type="button">Đẳng nhiệt</button>
+					</div>
+				</section>
+				<section class="card">
 					<h2>Thông số hiện tại</h2>
 					<div class="stat"><span class="stat-label">Nhiệt độ</span><strong id="temperature">300 <small>K</small></strong></div>
 					<div class="stat"><span class="stat-label">Phân tử</span><strong id="particleCount">24</strong></div>
@@ -157,7 +169,11 @@
 		const temperatureMeter = document.getElementById('temperatureMeter');
 		const piston = document.getElementById('piston');
 		const finger = piston.querySelector('.finger');
+		const modeButtons = document.querySelectorAll('.mode-button');
 		let temperature = 300;
+		let mode = 'isochoric';
+		let modeTemperature = 300;
+		let modeVolume = 1;
 		let particles = [];
 		let dragActive = false;
 		let dragStartY = 0;
@@ -191,19 +207,33 @@
 
 		function setTemperature(value) {
 			temperature = Math.max(180, Math.min(520, Math.round(value)));
+			if (mode === 'isothermal') temperature = modeTemperature;
 			temperatureText.innerHTML = temperature + ' <small>K</small>';
 			particleText.textContent = particles.length;
 			pressureText.innerHTML = (temperature / 300 * particles.length / 24 / volumeRatio()).toFixed(1) + ' <small>atm</small>';
 			temperatureMeter.style.width = ((temperature - 180) / 340 * 100) + '%';
 			roller.style.top = ((520 - temperature) / 340 * 43) + 'px';
+			if (mode === 'isobaric' && !pistonActive) {
+				const targetVolume = Math.max(.35, Math.min(1, modeVolume * temperature / modeTemperature));
+				setPistonOffset((1 - targetVolume) * canvas.clientHeight * .48, false);
+			}
 		}
 
-		function setPistonOffset(value) {
+		function setPistonOffset(value, refreshTemperature = true) {
 			const maximumOffset = Math.max(0, canvas.clientHeight * .48);
 			pistonOffset = Math.max(0, Math.min(maximumOffset, value));
 			tank.style.setProperty('--piston-offset', pistonOffset + 'px');
 			volumeText.innerHTML = Math.round(volumeRatio() * 100) + ' <small>%</small>';
-			setTemperature(temperature);
+			if (refreshTemperature) setTemperature(temperature);
+		}
+
+		function setMode(nextMode) {
+			mode = nextMode;
+			modeTemperature = temperature;
+			modeVolume = volumeRatio();
+			modeButtons.forEach((button) => button.classList.toggle('active', button.dataset.mode === mode));
+			piston.classList.toggle('mode-locked', mode !== 'isothermal');
+			if (mode === 'isobaric') setTemperature(temperature);
 		}
 
 		function showTemperatureEffect() {
@@ -234,13 +264,14 @@
 
 		function seed() { particles = []; temperatureTrend = 0; setPistonOffset(0); for (let index = 0; index < 24; index += 1) addParticle(); setTemperature(300); showTemperatureEffect(); }
 		roller.addEventListener('pointerdown', (event) => { dragActive = true; dragStartY = event.clientY; dragStartTemperature = temperature; roller.setPointerCapture(event.pointerId); });
-		roller.addEventListener('pointermove', (event) => { if (dragActive) { const nextTemperature = dragStartTemperature + (dragStartY - event.clientY) * 4; temperatureTrend = Math.sign(nextTemperature - dragStartTemperature); setTemperature(nextTemperature); showTemperatureEffect(); } });
+		roller.addEventListener('pointermove', (event) => { if (dragActive) { const nextTemperature = dragStartTemperature + (dragStartY - event.clientY) * 4; temperatureTrend = mode === 'isothermal' ? 0 : Math.sign(nextTemperature - dragStartTemperature); setTemperature(nextTemperature); showTemperatureEffect(); } });
 		roller.addEventListener('pointerup', () => { dragActive = false; temperatureTrend = 0; showTemperatureEffect(); });
 		roller.addEventListener('pointercancel', () => { dragActive = false; temperatureTrend = 0; showTemperatureEffect(); });
 		piston.addEventListener('pointerdown', (event) => { pistonActive = true; piston.setPointerCapture(event.pointerId); piston.dataset.startY = event.clientY; piston.dataset.startOffset = pistonOffset; finger.classList.add('is-pressing'); });
 		piston.addEventListener('pointermove', (event) => { if (pistonActive) setPistonOffset(Number(piston.dataset.startOffset) + event.clientY - Number(piston.dataset.startY)); });
 		piston.addEventListener('pointerup', () => { pistonActive = false; finger.classList.remove('is-pressing'); });
 		piston.addEventListener('pointercancel', () => { pistonActive = false; finger.classList.remove('is-pressing'); });
+		modeButtons.forEach((button) => button.addEventListener('click', () => setMode(button.dataset.mode)));
 		function pumpParticles() { for (let index = 0; index < 4; index += 1) addParticle(); setTemperature(temperature); }
 		document.getElementById('pump').addEventListener('click', pumpParticles);
 		document.getElementById('pump').addEventListener('keydown', (event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); pumpParticles(); } });
